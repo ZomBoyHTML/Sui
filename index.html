@@ -484,7 +484,7 @@
     const need = l => 100 + (l - 1) * 50;
     const RANGES = { f: [5, 15], m: [15, 40], d: [30, 80] };
     function parseDest(s) { s = s.trim(); const m = s.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || s.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || s.match(/[?&](?:q|ll|query|destination|center)=(-?\d+\.?\d*)(?:,|%2C)(-?\d+\.?\d*)/) || s.match(/(-?\d+\.\d+)\s*[,; ]\s*(-?\d+\.\d+)/); if (!m) return null; const a = +m[1], b = +m[2]; return Math.abs(a) <= 90 && Math.abs(b) <= 180 ? { lat: a, lng: b } : null }
-    const skNeed = l => 3 + l * 2, MAXSK = 10;
+    const skNeed = l => 3 + l * 2, MAXSK = 10, RADIO = 50;
 
     function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('s'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('s'), 2600) }
 
@@ -520,7 +520,7 @@
       $('xt').textContent = S.xp + ' / ' + need(S.lv) + ' XP';
       $('sp').textContent = S.sp;
       const L = $('list'); L.innerHTML = '';
-      const done = S.q.filter(q => q.done).length; const td = new Date().toDateString(), mn = S.made.day === td ? S.made.n : 0; $('cnt').textContent = done + '/' + S.q.length + ' · hoy ' + mn + '/5';
+      const done = S.q.filter(q => q.done).length; const td = new Date().toDateString(), mn = S.made.day === td ? S.made.n : 0; $('cnt').textContent = done + '/' + S.q.length + ' · hoy ' + mn + '/8';
       if (!S.q.length) L.innerHTML = '<div class="empty">Sin misiones. ¡Escribe tu primera hazaña arriba!</div>';
       S.q.forEach(q => {
         const d = document.createElement('div'); d.className = 'q' + (q.done ? ' done' : '');
@@ -575,24 +575,24 @@
     $('pbtn').onclick = () => $('pf').click(); $('crest').onclick = () => $('pf').click();
     $('pdel').onclick = () => { S.photo = ''; save(); render() };
     $('pf').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 160; const m = Math.min(im.width, im.height); c.getContext('2d').drawImage(im, (im.width - m) / 2, (im.height - m) / 2, m, m, 0, 0, 160, 160); S.photo = c.toDataURL('image/jpeg', .85); save(); render(); toast('Foto actualizada') }; im.src = r.result }; r.readAsDataURL(f); e.target.value = '' };
-    renderSug();
+    S.q.forEach(q => { if (q.r) q.r = RADIO }); renderSug();
     let draft = null;
     $('setloc').onclick = () => { if (!pos) { toast('Activa el GPS en Ajustes primero'); return } setPin(pos.lat, pos.lng) };
     $('add').onclick = () => {
       const t = $('mt').value.trim(), cat = $('mc').value; if (!t) { toast('Escribe la misión primero'); return }
       const td = new Date().toDateString(); if (S.made.day !== td) S.made = { day: td, n: 0 };
-      if (S.made.n >= 5) { toast('Límite alcanzado: 5 misiones por día'); return }
+      if (S.made.n >= 8) { toast('Límite alcanzado: 8 misiones por día'); return }
       const q = { id: Date.now(), t, cat, d: (() => { const r = Math.random(); return r < .4 ? 'f' : r < .8 ? 'm' : 'd' })(), done: false };
       if (cat === 'lugar') {
         let p = null; const raw = $('dest').value.trim();
         if (raw) { const c = parseDest(raw); if (!c) { toast(/goo\.gl|maps\.app/.test(raw) ? 'Enlace corto no legible: busca el lugar arriba o toca el mapa' : 'No pude leer ese destino'); return } p = { name: t, lat: c.lat, lng: c.lng }; S.places.push(p) }
         else if ($('saved').value !== '') p = S.places[+$('saved').value];
         if (!p) { toast('Toca el mapa, busca un lugar o elige uno guardado'); return }
-        q.lat = p.lat; q.lng = p.lng; q.r = 100; q.place = p.name; clearPin(); $('saved').value = '';
+        q.lat = p.lat; q.lng = p.lng; q.r = RADIO; q.place = p.name; clearPin(); $('saved').value = '';
       }
       S.made.n++; S.q.push(q); $('mt').value = ''; save(); render(); toast('Misión aceptada · rango ' + ({ f: 'Común', m: 'Rara', d: 'Épica' })[q.d]);
     };
-    $('newday').onclick = () => { S.q = S.q.filter(q => !q.done); save(); render(); toast('¡Un nuevo día comienza!') };
+    $('newday').onclick = () => { S.q = S.q.filter(q => !q.done); S.made = { day: '', n: 0 }; save(); render(); toast('¡Un nuevo día comienza!') };
     $('savename').onclick = () => { const n = $('nameIn').value.trim(); if (n) { S.name = n; save(); render(); toast('Nombre actualizado') } };
     $('reset').onclick = () => { if (confirm('¿Borrar toda tu aventura?')) { S = def(); save(); render() } };
 
