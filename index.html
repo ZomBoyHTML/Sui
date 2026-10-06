@@ -5,11 +5,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Sui</title>
-<link rel="icon" type="image/png" sizes="32x32" href="img/sword.png">
-<link rel="icon" type="image/png" sizes="192x192" href="img/caballero.png">
-<link rel="apple-touch-icon" sizes="180x180" href="img/caballero.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/icono.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="img/Sui.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="img/Sui.png">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English&display=swap"
     rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <style>
     :root {
       --wood: #2a1a10;
@@ -330,13 +331,30 @@
       font-size: 48px;
       font-weight: 700
     }
+
+    #map {
+      width: 100%;
+      height: 300px;
+      border: 3px solid var(--wood);
+      border-radius: 8px
+    }
+
+    .row select {
+      width: auto;
+      max-width: 46%
+    }
+
+    .crest {
+      cursor: pointer;
+      background-position: center
+    }
   </style>
 </head>
 
 <body>
   <div class="app">
     <div class="card hero">
-      <div class="crest">⚔️</div>
+      <div class="crest" id="crest" title="Toca para cambiar la foto">⚔️</div>
       <div style="flex:1">
         <h1><span id="nm">Aventurero</span> <span class="lv">Nv. <span id="lv">1</span></span></h1>
         <small id="ttl">Campesino</small>
@@ -370,31 +388,33 @@
       </div>
       <div class="card">
         <h2>🗺️ Mapa en vivo</h2>
-        <div style="position:relative">
-          <canvas id="map"
-            style="width:100%;height:290px;border:3px solid var(--wood);border-radius:8px;touch-action:none;display:block"></canvas>
-          <div style="position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px">
-            <button class="btn" id="zin" style="padding:4px 11px">＋</button>
-            <button class="btn" id="zout" style="padding:4px 11px">－</button>
+        <div class="row"><input id="sq" placeholder="Buscar un lugar o dirección…"><button class="btn b"
+            id="sbtn">🔍</button></div>
+        <div style="position:relative;margin-top:6px">
+          <div id="map"></div>
+          <div style="position:absolute;right:8px;top:8px;z-index:1000;display:flex;flex-direction:column;gap:6px">
             <button class="btn g" id="ctrbtn" style="padding:4px 9px">🎯</button>
+            <button class="btn" id="unpin" style="padding:4px 9px;display:none">✕ 📌</button>
           </div>
         </div>
-        <div class="note">Toca el mapa para marcar un destino 📌. Arrastra para explorar; 🎯 vuelve a seguirte.</div>
+        <div class="note">Toca el mapa para marcar el destino 📌 y pulsa ✕ para quitarlo. 🎯 vuelve a seguirte.</div>
       </div>
       <div class="card">
         <h2>Misiones de hoy <span class="lv" id="cnt"></span></h2>
         <div id="list"></div>
-        <button class="btn g" id="newday" style="width:100%">🌅 Comenzar nuevo día</button>
+        <div class="row"><button class="btn g" id="newday" style="flex:1">🌅 Nuevo día</button><button class="btn"
+            id="delq" style="flex:1">🗑️ Borrar lista</button></div>
       </div>
     </section>
 
     <section id="h" class="sec">
       <div class="card">
         <h2>Árbol de habilidades</h2>
-        <div class="sp">Puntos de habilidad disponibles: <b id="sp">0</b> <small>(1 por cada subida de nivel)</small>
-        </div>
+        <div class="sp">Puntos extra ganados: <b id="sp">0</b> <small>(1 por cada subida de nivel; se suma solo a la
+            habilidad que subió tu nivel)</small></div>
         <div id="skills"></div>
-        <div class="note">Cada misión da XP a su habilidad. Con tus puntos puedes mejorar una habilidad extra.</div>
+        <div class="note">Cada misión da progreso a su habilidad y, al subir de nivel, esa habilidad gana un nivel
+          extra.</div>
       </div>
     </section>
 
@@ -403,6 +423,19 @@
         <h2>Ajustes</h2>
         <input id="nameIn" placeholder="Nombre de tu héroe" maxlength="20">
         <button class="btn" id="savename" style="width:100%;margin-top:6px">Guardar nombre</button>
+        <h2 style="margin-top:14px">Foto de perfil</h2>
+        <div class="row"><button class="btn b" id="pbtn" style="flex:1">📷 Cambiar foto</button><button class="btn"
+            id="pdel" style="flex:1">Quitar</button></div>
+        <input type="file" id="pf" accept="image/*" hidden>
+        <h2 style="margin-top:14px">Clase</h2>
+        <div id="cls" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+        <div class="note" id="clsn"></div>
+        <h2 style="margin-top:14px">Atajos de misión</h2>
+        <div id="sugEd"></div>
+        <button class="btn b" id="addsug" style="width:100%;margin-top:4px">＋ Añadir atajo</button>
+        <h2 style="margin-top:14px">Lugares guardados</h2>
+        <div id="plList"></div>
+        <button class="btn" id="delpl" style="width:100%;margin-top:4px">🗑️ Borrar todos los lugares</button>
         <h2 style="margin-top:14px">Ubicación</h2>
         <div id="gps" class="note">GPS: sin permiso aún.</div>
         <button class="btn b" id="gpsbtn" style="width:100%;margin-top:6px">Activar GPS</button>
@@ -421,6 +454,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script>
     const CATS = {
       trabajo: { n: 'Trabajo', ic: '⚒️', sk: 'disciplina' },
@@ -440,15 +474,17 @@
     };
     const TITLES = ['Campesino', 'Escudero', 'Aprendiz', 'Soldado', 'Caballero', 'Capitán', 'Barón', 'Conde', 'Duque', 'Rey'];
     const SUG = [['Ir a trabajar', 'trabajo'], ['Ir a clases', 'lugar'], ['Llegar a casa', 'lugar'], ['Estudiar 1 hora', 'estudio'], ['Lavar los platos', 'hogar'], ['Salir a caminar', 'ejercicio'], ['Hacer la compra', 'hogar']];
+    const CLS = { caballero: ['🛡️', 'Caballero', ['trabajo', 'ejercicio']], erudito: ['📜', 'Erudito', ['estudio']], artesano: ['🔨', 'Artesano', ['hogar']], explorador: ['🧭', 'Explorador', ['lugar', 'social']] };
+    const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
     const $ = id => document.getElementById(id);
-    const def = () => ({ name: 'Aventurero', xp: 0, lv: 1, sp: 0, streak: 0, lastDay: '', skills: Object.fromEntries(Object.keys(SK).map(k => [k, { lv: 0, pts: 0 }])), q: [], places: [] });
+    const def = () => ({ name: 'Aventurero', xp: 0, lv: 1, sp: 0, streak: 0, lastDay: '', skills: Object.fromEntries(Object.keys(SK).map(k => [k, { lv: 0, pts: 0 }])), q: [], places: [], sug: SUG.map(x => [...x]), cls: '', photo: '', made: { day: '', n: 0 } });
     let S = def(), pos = null, watch = null;
     try { const r = localStorage.getItem('cronicas'); if (r) S = Object.assign(def(), JSON.parse(r)) } catch (e) { }
     const save = () => { try { localStorage.setItem('cronicas', JSON.stringify(S)) } catch (e) { } };
     const need = l => 100 + (l - 1) * 50;
     const RANGES = { f: [5, 15], m: [15, 40], d: [30, 80] };
-    function parseDest(s) { const m = s.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || s.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || s.match(/(-?\d+\.\d+)\s*[,; ]\s*(-?\d+\.\d+)/); if (!m) return null; const a = +m[1], b = +m[2]; return Math.abs(a) <= 90 && Math.abs(b) <= 180 ? { lat: a, lng: b } : null }
-    const skNeed = l => 3 + l * 2;
+    function parseDest(s) { s = s.trim(); const m = s.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || s.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || s.match(/[?&](?:q|ll|query|destination|center)=(-?\d+\.?\d*)(?:,|%2C)(-?\d+\.?\d*)/) || s.match(/(-?\d+\.\d+)\s*[,; ]\s*(-?\d+\.\d+)/); if (!m) return null; const a = +m[1], b = +m[2]; return Math.abs(a) <= 90 && Math.abs(b) <= 180 ? { lat: a, lng: b } : null }
+    const skNeed = l => 3 + l * 2, MAXSK = 10;
 
     function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('s'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('s'), 2600) }
 
@@ -459,10 +495,10 @@
 
     function addXP(n, skill) {
       S.xp += n; let up = false;
-      while (S.xp >= need(S.lv)) { S.xp -= need(S.lv); S.lv++; S.sp++; up = true }
+      while (S.xp >= need(S.lv)) { S.xp -= need(S.lv); S.lv++; S.sp++; S.skills[skill].lv = Math.min(MAXSK, S.skills[skill].lv + 1); up = true }
       const k = S.skills[skill]; k.pts++;
-      while (k.pts >= skNeed(k.lv)) { k.pts -= skNeed(k.lv); k.lv++ }
-      if (up) { $('lvn').textContent = 'Nivel ' + S.lv; $('lvt').textContent = 'Título: ' + TITLES[Math.min(Math.floor((S.lv - 1) / 3), 9)] + ' · +1 punto de habilidad'; $('lvl').classList.add('s') }
+      while (k.lv < MAXSK && k.pts >= skNeed(k.lv)) { k.pts -= skNeed(k.lv); k.lv++ } if (k.lv >= MAXSK) k.pts = 0;
+      if (up) { $('lvn').textContent = 'Nivel ' + S.lv; $('lvt').textContent = 'Título: ' + TITLES[Math.min(Math.floor((S.lv - 1) / 3), 9)] + ' · +1 punto extra: ' + SK[skill][1] + (S.skills[skill].lv >= MAXSK ? ' (al máximo)' : ' sube de nivel'); $('lvl').classList.add('s') }
     }
 
     function complete(id) {
@@ -470,20 +506,21 @@
       q.done = true;
       const today = new Date().toDateString();
       if (S.lastDay !== today) { const y = new Date(Date.now() - 864e5).toDateString(); S.streak = S.lastDay === y ? S.streak + 1 : 1; S.lastDay = today }
-      const R = RANGES[q.d || 'm']; let xp = R[0] + Math.floor(Math.random() * (R[1] - R[0] + 1)); const crit = Math.random() < 0.1; if (crit) xp *= 2; q.xp = xp;
+      const R = RANGES[q.d || 'm']; let xp = R[0] + Math.floor(Math.random() * (R[1] - R[0] + 1)); const crit = Math.random() < 0.1; if (crit) xp *= 2; const cl = CLS[S.cls], bon = cl && cl[2].includes(q.cat); if (bon) xp = Math.round(xp * 1.25); q.xp = xp;
       addXP(xp, CATS[q.cat].sk);
-      toast((crit ? '💥 ¡Golpe crítico! ' : '¡Misión cumplida! ') + '+' + xp + ' XP · ' + SK[CATS[q.cat].sk][1] + ' +1');
+      toast((crit ? '💥 ¡Golpe crítico! ' : '¡Misión cumplida! ') + '+' + xp + ' XP' + (bon ? ' (clase +25%)' : '') + ' · ' + SK[CATS[q.cat].sk][1] + ' +1');
       save(); render();
     }
 
     function render() {
       $('nm').textContent = S.name; $('lv').textContent = S.lv; $('st').textContent = S.streak;
-      $('ttl').textContent = TITLES[Math.min(Math.floor((S.lv - 1) / 3), 9)];
+      $('ttl').textContent = TITLES[Math.min(Math.floor((S.lv - 1) / 3), 9)] + (S.cls ? ' · ' + CLS[S.cls][1] : '');
+      const cr = $('crest'); if (S.photo) { cr.style.backgroundImage = 'url(' + S.photo + ')'; cr.style.backgroundSize = 'cover'; cr.textContent = '' } else { cr.style.backgroundImage = ''; cr.textContent = S.cls ? CLS[S.cls][0] : '⚔️' }
       $('xb').style.width = (S.xp / need(S.lv) * 100) + '%';
       $('xt').textContent = S.xp + ' / ' + need(S.lv) + ' XP';
       $('sp').textContent = S.sp;
       const L = $('list'); L.innerHTML = '';
-      const done = S.q.filter(q => q.done).length; $('cnt').textContent = done + '/' + S.q.length;
+      const done = S.q.filter(q => q.done).length; const td = new Date().toDateString(), mn = S.made.day === td ? S.made.n : 0; $('cnt').textContent = done + '/' + S.q.length + ' · hoy ' + mn + '/5';
       if (!S.q.length) L.innerHTML = '<div class="empty">Sin misiones. ¡Escribe tu primera hazaña arriba!</div>';
       S.q.forEach(q => {
         const d = document.createElement('div'); d.className = 'q' + (q.done ? ' done' : '');
@@ -501,10 +538,13 @@
       const K = $('skills'); K.innerHTML = '';
       Object.entries(SK).forEach(([k, v]) => {
         const s = S.skills[k];
-        K.innerHTML += '<div class="skill"><div class="top"><span>' + v[0] + ' <b>' + v[1] + '</b></span><span class="cz">Nv. ' + s.lv + '</span></div><div class="bar"><i style="width:' + (s.pts / skNeed(s.lv) * 100) + '%"></i></div><small>' + v[2] + ' · ' + s.pts + '/' + skNeed(s.lv) + '</small> <button class="btn" style="padding:3px 8px;font-size:13px;float:right" data-up="' + k + '" ' + (S.sp ? '' : 'disabled') + '>+1 punto</button></div>';
+        K.innerHTML += '<div class="skill"><div class="top"><span>' + v[0] + ' <b>' + v[1] + '</b></span><span class="cz">' + (s.lv >= MAXSK ? 'Nv. 10 · MAX' : 'Nv. ' + s.lv + ' / ' + MAXSK) + '</span></div><div class="bar"><i style="width:' + (s.lv >= MAXSK ? 100 : s.pts / skNeed(s.lv) * 100) + '%"></i></div><small>' + v[2] + (s.lv >= MAXSK ? ' · ¡Maestría total!' : ' · ' + s.pts + '/' + skNeed(s.lv)) + '</small></div>';
       });
       drawMap();
-      const sv = $('saved'); sv.innerHTML = '<option value="">— Lugares guardados —</option>' + S.places.map((p, i) => '<option value="' + i + '">' + p.name + '</option>').join('');
+      const sv = $('saved'), cur = sv.value; sv.innerHTML = '<option value="">— Lugares guardados —</option>' + S.places.map((p, i) => '<option value="' + i + '">' + esc(p.name) + '</option>').join(''); sv.value = cur;
+      $('plList').innerHTML = S.places.length ? S.places.map((p, i) => '<div class="q"><div class="ic">📍</div><div class="t"><b>' + esc(p.name) + '</b></div><button class="x" data-pd="' + i + '">✕</button></div>').join('') : '<div class="note">Aún no hay lugares guardados.</div>';
+      $('cls').innerHTML = Object.entries(CLS).map(([k, v]) => '<button class="btn ' + (S.cls === k ? 'g' : 'b') + '" data-cls="' + k + '">' + v[0] + ' ' + v[1] + '</button>').join('');
+      $('clsn').textContent = S.cls ? 'Bonus +25% XP en: ' + CLS[S.cls][2].map(c => CATS[c].n).join(', ') : 'Elige una clase: da +25% XP en ciertas misiones.';
     }
 
     // Eventos
@@ -512,29 +552,45 @@
       const t = e.target;
       if (t.dataset.c) complete(+t.dataset.c);
       if (t.dataset.x) { S.q = S.q.filter(q => q.id !== +t.dataset.x); save(); render() }
-      if (t.dataset.up && S.sp) { S.sp--; const k = S.skills[t.dataset.up]; k.lv++; save(); render(); toast('Habilidad mejorada') }
+      if (t.dataset.pd) { S.places.splice(+t.dataset.pd, 1); save(); render() }
+      if (t.dataset.cls) { S.cls = t.dataset.cls; save(); render(); toast('Clase: ' + CLS[S.cls][1]) }
+      if (t.dataset.sd) { S.sug.splice(+t.dataset.sd, 1); save(); renderSug() }
+      if (t.dataset.t && mapOK) setTimeout(() => map.invalidateSize(), 60);
       if (t.dataset.t) { document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b === t)); document.querySelectorAll('.sec').forEach(s => s.classList.toggle('on', s.id === t.dataset.t)) }
     });
     $('mc').innerHTML = Object.entries(CATS).map(([k, v]) => '<option value="' + k + '">' + v.ic + ' ' + v.n + '</option>').join('');
     $('mc').onchange = () => { $('loc').style.display = $('mc').value === 'lugar' ? 'block' : 'none' };
-    $('chips').innerHTML = SUG.map((s, i) => '<span class="chip" data-s="' + i + '">' + s[0] + '</span>').join('');
-    $('chips').onclick = e => { const i = e.target.dataset.s; if (i == null) return; $('mt').value = SUG[i][0]; $('mc').value = SUG[i][1]; $('mc').onchange() };
+    const catOpts = sel => Object.entries(CATS).map(([k, v]) => '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + v.ic + ' ' + v.n + '</option>').join('');
+    function chipsR() { $('chips').innerHTML = S.sug.map((x, i) => '<span class="chip" data-s="' + i + '">' + esc(x[0]) + '</span>').join('') }
+    function renderSug() { chipsR(); $('sugEd').innerHTML = S.sug.map((x, i) => '<div class="row"><input data-st="' + i + '" value="' + esc(x[0]) + '" maxlength="40"><select data-sc="' + i + '">' + catOpts(x[1]) + '</select><button class="x" data-sd="' + i + '">✕</button></div>').join('') }
+    $('chips').onclick = e => { const i = e.target.dataset.s; if (i == null) return; const x = S.sug[i]; $('mt').value = x[0]; $('mc').value = x[1]; $('mc').onchange() };
+    document.addEventListener('change', e => {
+      const t = e.target;
+      if (t.dataset.st != null) { const x = S.sug[+t.dataset.st]; x[0] = t.value.trim() || x[0]; save(); chipsR() }
+      if (t.dataset.sc != null) { S.sug[+t.dataset.sc][1] = t.value; save(); chipsR() }
+    });
+    $('addsug').onclick = () => { S.sug.push(['Nueva misión', 'trabajo']); save(); renderSug() };
+    $('delpl').onclick = () => { if (S.places.length && confirm('¿Borrar todos los lugares guardados?')) { S.places = []; save(); render() } };
+    $('delq').onclick = () => { if (S.q.length && confirm('¿Borrar todas las misiones de la lista?')) { S.q = []; save(); render() } };
+    $('pbtn').onclick = () => $('pf').click(); $('crest').onclick = () => $('pf').click();
+    $('pdel').onclick = () => { S.photo = ''; save(); render() };
+    $('pf').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 160; const m = Math.min(im.width, im.height); c.getContext('2d').drawImage(im, (im.width - m) / 2, (im.height - m) / 2, m, m, 0, 0, 160, 160); S.photo = c.toDataURL('image/jpeg', .85); save(); render(); toast('Foto actualizada') }; im.src = r.result }; r.readAsDataURL(f); e.target.value = '' };
+    renderSug();
     let draft = null;
-    $('setloc').onclick = () => { if (!pos) { toast('Activa el GPS en Ajustes primero'); return } $('dest').value = pos.lat.toFixed(6) + ', ' + pos.lng.toFixed(6) };
+    $('setloc').onclick = () => { if (!pos) { toast('Activa el GPS en Ajustes primero'); return } setPin(pos.lat, pos.lng) };
     $('add').onclick = () => {
       const t = $('mt').value.trim(), cat = $('mc').value; if (!t) { toast('Escribe la misión primero'); return }
+      const td = new Date().toDateString(); if (S.made.day !== td) S.made = { day: td, n: 0 };
+      if (S.made.n >= 5) { toast('Límite alcanzado: 5 misiones por día'); return }
       const q = { id: Date.now(), t, cat, d: (() => { const r = Math.random(); return r < .4 ? 'f' : r < .8 ? 'm' : 'd' })(), done: false };
       if (cat === 'lugar') {
-        let p = S.places[$('saved').value];
-        const raw = $('dest').value.trim();
-        if (raw) {
-          const c = parseDest(raw); if (!c) { toast('No pude leer ese destino. Usa un enlace de Google Maps o "lat, lng"'); return }
-          p = { name: t, lat: c.lat, lng: c.lng }; S.places.push(p)
-        }
-        if (!p) { toast('Pega un destino o elige uno guardado'); return }
-        q.lat = p.lat; q.lng = p.lng; q.r = 100; q.place = p.name; $('dest').value = ''; pend = null;
+        let p = null; const raw = $('dest').value.trim();
+        if (raw) { const c = parseDest(raw); if (!c) { toast(/goo\.gl|maps\.app/.test(raw) ? 'Enlace corto no legible: busca el lugar arriba o toca el mapa' : 'No pude leer ese destino'); return } p = { name: t, lat: c.lat, lng: c.lng }; S.places.push(p) }
+        else if ($('saved').value !== '') p = S.places[+$('saved').value];
+        if (!p) { toast('Toca el mapa, busca un lugar o elige uno guardado'); return }
+        q.lat = p.lat; q.lng = p.lng; q.r = 100; q.place = p.name; clearPin(); $('saved').value = '';
       }
-      S.q.push(q); $('mt').value = ''; save(); render(); toast('Misión aceptada · rango ' + ({ f: 'Común', m: 'Rara', d: 'Épica' })[q.d]);
+      S.made.n++; S.q.push(q); $('mt').value = ''; save(); render(); toast('Misión aceptada · rango ' + ({ f: 'Común', m: 'Rara', d: 'Épica' })[q.d]);
     };
     $('newday').onclick = () => { S.q = S.q.filter(q => !q.done); save(); render(); toast('¡Un nuevo día comienza!') };
     $('savename').onclick = () => { const n = $('nameIn').value.trim(); if (n) { S.name = n; save(); render(); toast('Nombre actualizado') } };
@@ -545,59 +601,38 @@
       if (!navigator.geolocation) { $('gps').textContent = 'Este dispositivo no tiene GPS en el navegador.'; return }
       if (watch != null) navigator.geolocation.clearWatch(watch);
       watch = navigator.geolocation.watchPosition(p => {
-        if (!pos) K = Math.cos(p.coords.latitude * Math.PI / 180); pos = { lat: p.coords.latitude, lng: p.coords.longitude }; trail.push(pos); if (trail.length > 300) trail.shift();
+        pos = { lat: p.coords.latitude, lng: p.coords.longitude }; trail.push([pos.lat, pos.lng]); if (trail.length > 300) trail.shift();
         $('gps').textContent = 'GPS activo ✔ (precisión ~' + Math.round(p.coords.accuracy) + ' m)'; render();
       }, err => { $('gps').textContent = 'GPS no disponible (' + err.message + '). Si abres esto dentro de otra página, permite la ubicación o ábrelo en una pestaña propia.' }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
     }
-    let pend = null, follow = true, mpp = 5, trail = [], ctr = null, K = 0.84;
-    function drawMap() {
-      const c = $('map'), W = c.clientWidth || 300, H = c.clientHeight || 290, r = window.devicePixelRatio || 1;
-      c.width = W * r; c.height = H * r; const g = c.getContext('2d'); g.scale(r, r);
-      g.fillStyle = '#e6d29c'; g.fillRect(0, 0, W, H);
-      if (follow && pos) ctr = { lat: pos.lat, lng: pos.lng };
-      if (!ctr) { g.fillStyle = '#3a2412'; g.font = '16px Cinzel,serif'; g.textAlign = 'center'; g.fillText('Activa el GPS para ver el mapa', W / 2, H / 2); return }
-      const P = (a, b) => ({ x: W / 2 + (b - ctr.lng) * 111320 * K / mpp, y: H / 2 - (a - ctr.lat) * 110540 / mpp });
-      const steps = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000], st = steps.find(v => v >= 40 * mpp) || 10000;
-      const xc = ctr.lng * 111320 * K, yc = ctr.lat * 110540;
-      g.strokeStyle = '#8a5a1a40'; g.lineWidth = 1; g.beginPath();
-      for (let m = Math.ceil((xc - W / 2 * mpp) / st) * st; m <= xc + W / 2 * mpp; m += st) { const x = W / 2 + (m - xc) / mpp; g.moveTo(x, 0); g.lineTo(x, H) }
-      for (let m = Math.ceil((yc - H / 2 * mpp) / st) * st; m <= yc + H / 2 * mpp; m += st) { const y = H / 2 - (m - yc) / mpp; g.moveTo(0, y); g.lineTo(W, y) }
-      g.stroke();
-      g.fillStyle = '#3a2412'; g.font = '12px Cinzel,serif'; g.textAlign = 'left'; g.fillText('N ↑   cuadrícula: ' + (st >= 1000 ? st / 1000 + ' km' : st + ' m'), 8, 16);
-      if (trail.length > 1) { g.strokeStyle = '#2b4a7a'; g.lineWidth = 3; g.setLineDash([2, 5]); g.beginPath(); trail.forEach((t, i) => { const p = P(t.lat, t.lng); i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y) }); g.stroke(); g.setLineDash([]) }
-      const me = pos ? P(pos.lat, pos.lng) : null;
-      g.textAlign = 'center';
-      S.q.forEach(q => {
-        if (q.lat == null || q.done) return; const p = P(q.lat, q.lng);
-        g.fillStyle = '#8b1e1e22'; g.strokeStyle = '#8b1e1e'; g.lineWidth = 2; g.setLineDash([5, 4]); g.beginPath(); g.arc(p.x, p.y, Math.max(q.r / mpp, 6), 0, 7); g.fill(); g.stroke();
-        if (me) { g.beginPath(); g.moveTo(me.x, me.y); g.lineTo(p.x, p.y); g.stroke(); g.setLineDash([]); const d = Math.round(dist(pos.lat, pos.lng, q.lat, q.lng)); g.fillStyle = '#8b1e1e'; g.font = '13px Cinzel,serif'; g.fillText(d >= 1000 ? (d / 1000).toFixed(1) + ' km' : d + ' m', (me.x + p.x) / 2, (me.y + p.y) / 2 - 6) }
-        g.setLineDash([]); g.font = '24px serif'; g.fillText('🚩', p.x, p.y + 8); g.font = '12px Cinzel,serif'; g.fillStyle = '#3a2412'; g.fillText(q.place || q.t, p.x, p.y + 24)
-      });
-      if (pend) { const p = P(pend.lat, pend.lng); g.font = '26px serif'; g.fillText('📌', p.x, p.y + 8) }
-      if (me) { g.fillStyle = '#d4a01755'; g.beginPath(); g.arc(me.x, me.y, 16, 0, 7); g.fill(); g.fillStyle = '#d4a017'; g.strokeStyle = '#2a1a10'; g.lineWidth = 3; g.beginPath(); g.arc(me.x, me.y, 8, 0, 7); g.fill(); g.stroke() }
+    const mapOK = typeof L !== 'undefined';
+    let pend = null, follow = true, first = true, trail = [], map, pinM, meM, qL, trL;
+    const ico = h => L.divIcon({ html: '<div style="font-size:26px;line-height:26px">' + h + '</div>', className: '', iconSize: [26, 26], iconAnchor: [13, 24] });
+    if (mapOK) {
+      map = L.map('map').setView([20, 0], 2);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+      qL = L.layerGroup().addTo(map); trL = L.polyline([], { color: '#2b4a7a', weight: 3, dashArray: '2 6' }).addTo(map);
+      map.on('click', e => setPin(e.latlng.lat, e.latlng.lng));
+      map.on('dragstart', () => { follow = false });
     }
-    (() => {
-      const c = $('map'); let d = null;
-      c.onpointerdown = e => { c.setPointerCapture(e.pointerId); d = { x: e.offsetX, y: e.offsetY, m: false, lx: e.offsetX, ly: e.offsetY } };
-      c.onpointermove = e => {
-        if (!d) return; if (Math.hypot(e.offsetX - d.x, e.offsetY - d.y) > 6) d.m = true;
-        if (d.m && ctr) { follow = false; ctr = { lat: ctr.lat + (e.offsetY - d.ly) * mpp / 110540, lng: ctr.lng - (e.offsetX - d.lx) * mpp / (111320 * K) }; drawMap() }
-        d.lx = e.offsetX; d.ly = e.offsetY
-      };
-      c.onpointerup = e => {
-        if (d && !d.m && ctr) {
-          const W = c.clientWidth, H = c.clientHeight;
-          pend = { lat: ctr.lat - (e.offsetY - H / 2) * mpp / 110540, lng: ctr.lng + (e.offsetX - W / 2) * mpp / (111320 * K) };
-          $('dest').value = pend.lat.toFixed(6) + ', ' + pend.lng.toFixed(6); $('mc').value = 'lugar'; $('mc').onchange();
-          toast('Destino marcado 📌 Escribe la misión y acéptala')
-        }
-        d = null; drawMap()
-      };
-      $('zin').onclick = () => { mpp = Math.max(1, mpp / 2); drawMap() };
-      $('zout').onclick = () => { mpp = Math.min(4000, mpp * 2); drawMap() };
-      $('ctrbtn').onclick = () => { follow = true; drawMap() };
-      new ResizeObserver(drawMap).observe(c);
-    })();
+    function showPin(a, b) { pend = { lat: a, lng: b }; $('unpin').style.display = 'block'; if (!mapOK) return; if (pinM) pinM.setLatLng([a, b]); else pinM = L.marker([a, b], { icon: ico('📌') }).addTo(map) }
+    function setPin(a, b) { showPin(a, b); $('dest').value = a.toFixed(6) + ', ' + b.toFixed(6); $('mc').value = 'lugar'; $('mc').onchange() }
+    function clearPin() { pend = null; $('dest').value = ''; $('unpin').style.display = 'none'; if (pinM) { map.removeLayer(pinM); pinM = null } }
+    function drawMap() {
+      if (!mapOK) return;
+      qL.clearLayers();
+      S.q.forEach(q => { if (q.lat == null || q.done) return; L.circle([q.lat, q.lng], { radius: q.r, color: '#8b1e1e', weight: 2, fillOpacity: .15 }).addTo(qL); L.marker([q.lat, q.lng], { icon: ico('🚩') }).bindTooltip(q.place || q.t, { direction: 'right' }).addTo(qL) });
+      if (pos) {
+        if (!meM) meM = L.circleMarker([pos.lat, pos.lng], { radius: 9, color: '#2a1a10', weight: 3, fillColor: '#d4a017', fillOpacity: 1 }).addTo(map); else meM.setLatLng([pos.lat, pos.lng]);
+        trL.setLatLngs(trail);
+        if (follow) { map.setView([pos.lat, pos.lng], first ? 16 : map.getZoom(), { animate: false }); first = false }
+      }
+    }
+    async function search() { const q = $('sq').value.trim(); if (!q) return; try { const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q)); const j = await r.json(); if (!j.length) { toast('No encontré ese lugar'); return } const a = +j[0].lat, b = +j[0].lon; follow = false; if (mapOK) map.setView([a, b], 17); setPin(a, b); toast('Destino marcado: ' + j[0].display_name.split(',')[0]) } catch (e) { toast('No pude buscar. Revisa tu conexión') } }
+    $('sbtn').onclick = search; $('sq').onkeydown = e => { if (e.key === 'Enter') search() };
+    $('unpin').onclick = clearPin;
+    $('ctrbtn').onclick = () => { follow = true; first = true; drawMap() };
+    $('dest').oninput = () => { const v = $('dest').value.trim(); if (/goo\.gl|maps\.app/.test(v)) { toast('Enlace corto no legible: abre el enlace y copia la URL larga, o busca el lugar arriba'); return } const c = parseDest(v); if (c) { showPin(c.lat, c.lng); follow = false; if (mapOK) map.setView([c.lat, c.lng], 17) } };
     $('gpsbtn').onclick = startGPS; startGPS();
     render();
   </script>
