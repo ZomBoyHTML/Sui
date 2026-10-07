@@ -349,6 +349,14 @@
       background-position: center
     }
     html{-webkit-text-size-adjust:100%}:root{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}body{min-height:100dvh;overflow-x:hidden}.app{width:100%;padding:12px clamp(8px,3vw,16px)}.hero h1{font-size:clamp(16px,5vw,20px)}.crest{width:clamp(52px,16vw,64px);height:clamp(52px,16vw,64px);font-size:clamp(26px,8vw,32px)}.tabs button{min-height:44px;font-size:clamp(12px,3.4vw,14px)}.btn{min-height:42px}#map{height:clamp(220px,42vh,380px)}#toast{z-index:3000}#lvl{z-index:3100}@media(max-width:360px){body{font-size:15px}.card{padding:9px}}@media(max-height:480px) and (orientation:landscape){#map{height:70vh}}
+
+     /* Lector QR */
+    .qrbox{position:relative;margin:8px 0;border:3px solid var(--wood);border-radius:8px;overflow:hidden;background:#000;display:none}
+    .qrbox video{display:block;width:100%;max-height:300px;object-fit:cover}
+    .qrbox::after{content:"";position:absolute;inset:18%;border:3px dashed var(--gold);border-radius:12px;pointer-events:none}
+    .qrst{font-size:15px;padding:8px;border:2px solid #8a5a1a;border-radius:8px;background:var(--parch2);margin-bottom:8px}
+    .qrst.ok{border-color:var(--green)}
+    
   </style>
 </head>
 
@@ -417,6 +425,24 @@
         <div class="note">Cada misión da progreso a su habilidad y, al subir de nivel, esa habilidad gana un nivel
           extra.</div>
       </div>
+      
+      <div class="card" id="qrCard">
+        <h2>🔗 Vincular con QR</h2>
+        <div class="note" style="margin-top:0;margin-bottom:8px">Escanea el código QR del juego del PC para enlazar tus
+          habilidades y tus puntos extra ganados.</div>
+        <div id="qrState" class="qrst"></div>
+        <div class="qrbox" id="qrBox"><video id="qrVideo" playsinline muted></video></div>
+        <canvas id="qrCanvas" hidden></canvas>
+        <div class="row">
+          <button class="btn b" id="qrStart" style="flex:1">📷 Escanear QR</button>
+          <button class="btn" id="qrStop" style="flex:1;display:none">✕ Cerrar cámara</button>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button class="btn b" id="qrImg" style="flex:1">🖼️ Usar imagen</button>
+          <button class="btn" id="qrUnlink" style="flex:1;display:none">🔌 Desvincular</button>
+        </div>
+        <input type="file" id="qrFile" accept="image/*" hidden>
+      </div>
     </section>
 
     <section id="p" class="sec">
@@ -456,6 +482,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
   <script>
     const CATS = {
       trabajo: { n: 'Trabajo', ic: '⚒️', sk: 'disciplina' },
@@ -647,6 +674,97 @@ function syn() {
   fetch('https://ntfy.sh/sui-' + SYN, { method: 'POST', body: m }).then(r => { if (r.ok) { if (!synLast) toast('📱 Conectado con el juego del PC'); synLast = m } }).catch(() => { });
 }
 setInterval(syn, 4000); syn();
+
+    // ===== Lector de QR para vincular habilidades y puntos extra =====
+(function () {
+  const vid = $('qrVideo'), cv = $('qrCanvas'), ctx = cv.getContext('2d', { willReadFrequently: true });
+  let stream = null, raf = 0, det = null, busy = false, badAt = 0;
+  try { if ('BarcodeDetector' in window) det = new BarcodeDetector({ formats: ['qr_code'] }) } catch (e) { det = null }
+
+  const okCode = c => c && /^[a-z0-9]{6,40}$/i.test(c) ? c : null;
+  function parseCode(t) {
+    t = String(t || '').trim(); let c = null;
+    try { c = new URL(t).searchParams.get('sync') } catch (e) { }
+    if (!c) { const m = t.match(/[?&]sync=([a-z0-9]{6,40})/i); if (m) c = m[1] }
+    if (!c) c = t;
+    return okCode(c);
+  }
+  function state() {
+    const e = $('qrState'), on = !!SYN;
+    e.className = 'qrst' + (on ? ' ok' : '');
+    e.innerHTML = on ? '✅ Vinculado (código <b>' + esc(SYN.slice(0, 4)) + '…' + esc(SYN.slice(-2)) + '</b>)<br><small>Enviando: nivel ' + S.lv + ' · ' + S.sp + ' punto(s) extra · ' + Object.keys(SK).length + ' habilidades</small>' : '⚪ Sin vincular. Escanea el QR del juego del PC.';
+    $('qrUnlink').style.display = on ? '' : 'none';
+  }
+  function link(c) {
+    try { localStorage.setItem('sui_sync', c) } catch (e) { }
+    SYN = c; synLast = ''; synWarn = 0; state(); syn();
+    toast('🔗 QR leído: vinculando habilidades y puntos extra…');
+  }
+  function handle(text) {
+    const c = parseCode(text);
+    if (c) { stop(); link(c); return true }
+    if (Date.now() - badAt > 2500) { badAt = Date.now(); toast('Ese QR no es de Sui, prueba con otro') }
+    return false;
+  }
+  async function decodeSource(src, w, h) {
+    if (det) { try { const r = await det.detect(src); if (r.length) return r[0].rawValue } catch (e) { } }
+    if (typeof jsQR === 'function') {
+      cv.width = w; cv.height = h; ctx.drawImage(src, 0, 0, w, h);
+      const r = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'attemptBoth' });
+      if (r) return r.data;
+    }
+    return null;
+  }
+  async function loop() {
+    if (!stream) return;
+    if (!busy && vid.readyState >= 2 && vid.videoWidth) {
+      busy = true;
+      const sc = Math.min(1, 640 / vid.videoWidth), w = Math.round(vid.videoWidth * sc), h = Math.round(vid.videoHeight * sc);
+      try { const t = await decodeSource(vid, w, h); if (t) handle(t) } catch (e) { }
+      busy = false;
+    }
+    if (stream) raf = requestAnimationFrame(loop);
+  }
+  async function start() {
+    if (stream) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Este navegador no permite usar la cámara. Usa "Usar imagen"'); return }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      vid.srcObject = stream; await vid.play();
+      $('qrBox').style.display = 'block'; $('qrStart').style.display = 'none'; $('qrStop').style.display = '';
+      raf = requestAnimationFrame(loop);
+    } catch (e) { stream = null; toast('No pude abrir la cámara. Revisa el permiso o usa "Usar imagen"') }
+  }
+  function stop() {
+    cancelAnimationFrame(raf);
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null }
+    vid.srcObject = null; busy = false;
+    $('qrBox').style.display = 'none'; $('qrStart').style.display = ''; $('qrStop').style.display = 'none';
+  }
+  $('qrStart').onclick = start;
+  $('qrStop').onclick = stop;
+  $('qrImg').onclick = () => $('qrFile').click();
+  $('qrFile').onchange = e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    const im = new Image(), u = URL.createObjectURL(f);
+    im.onload = async () => {
+      const sc = Math.min(1, 1000 / Math.max(im.width, im.height)), w = Math.round(im.width * sc), h = Math.round(im.height * sc);
+      cv.width = w; cv.height = h; ctx.drawImage(im, 0, 0, w, h); URL.revokeObjectURL(u);
+      let t = null; try { t = await decodeSource(cv, w, h) } catch (e) { }
+      if (t) handle(t); else toast('No encontré ningún QR en esa imagen');
+    };
+    im.onerror = () => toast('No pude leer esa imagen'); im.src = u;
+  };
+  $('qrUnlink').onclick = () => {
+    if (!confirm('¿Desvincular del juego del PC?')) return;
+    try { localStorage.removeItem('sui_sync') } catch (e) { }
+    SYN = ''; synLast = ''; state(); toast('Desvinculado');
+  };
+  // Cerrar la cámara al cambiar de pestaña
+  document.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.t && e.target.dataset.t !== 'h') stop() });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stop() });
+  state(); setInterval(state, 5000);
+})();
 
   </script>
 </body>
