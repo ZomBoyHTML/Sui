@@ -636,6 +636,18 @@
     $('dest').oninput = () => { const v = $('dest').value.trim(); if (/goo\.gl|maps\.app/.test(v)) { toast('Enlace corto no legible: abre el enlace y copia la URL larga, o busca el lugar arriba'); return } const c = parseDest(v); if (c) { showPin(c.lat, c.lng); follow = false; if (mapOK) map.setView([c.lat, c.lng], 17) } };
     $('gpsbtn').onclick = startGPS; startGPS();
     render();
+
+var SYN = '', synLast = '', synWarn = 0;
+try { const c = new URLSearchParams(location.search).get('sync'); if (c && /^[a-z0-9]{6,40}$/i.test(c)) localStorage.setItem('sui_sync', c); SYN = localStorage.getItem('sui_sync') || '' } catch (e) { }
+function syn() {
+  if (!SYN) return;
+  if (!localStorage.getItem('cronicas')) { if (!synWarn) { synWarn = 1; toast('Abre este enlace en el mismo navegador donde guardas tus misiones') } return }
+  const m = JSON.stringify({ lv: S.lv, sp: S.sp, skills: Object.fromEntries(Object.entries(S.skills).map(([k, v]) => [k, { lv: v.lv }])) });
+  if (m === synLast) return;
+  fetch('https://ntfy.sh/sui-' + SYN, { method: 'POST', body: m }).then(r => { if (r.ok) { if (!synLast) toast('📱 Conectado con el juego del PC'); synLast = m } }).catch(() => { });
+}
+setInterval(syn, 4000); syn();
+
   </script>
 </body>
 
