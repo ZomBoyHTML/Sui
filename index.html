@@ -427,7 +427,7 @@
       
       <div class="card" id="qrCard">
         <h2>🔗 Vincular con QR</h2>
-        <div class="note" style="margin-top:0;margin-bottom:8px">Escanea el código QR del juego del PC para enlazar tus
+        <div class="note" style="margin-top:0;margin-bottom:8px">Escanea el código QR de Sui Game para enlazar tus
           habilidades y tus puntos extra ganados.</div>
         <div id="qrState" class="qrst"></div>
         <div class="qrbox" id="qrBox"><video id="qrVideo" playsinline muted></video></div>
@@ -679,7 +679,7 @@ function syn() {
   if (!localStorage.getItem('cronicas')) { if (!synWarn) { synWarn = 1; toast('Abre este enlace en el mismo navegador donde guardas tus misiones') } return }
   const m = JSON.stringify({ lv: S.lv, sp: S.sp, skills: Object.fromEntries(Object.entries(S.skills).map(([k, v]) => [k, { lv: v.lv }])) });
   if (m === synLast) return;
-  fetch('https://ntfy.sh/sui-' + SYN, { method: 'POST', body: m }).then(r => { if (r.ok) { if (!synLast) toast('📱 Conectado con el juego del PC'); synLast = m } }).catch(() => { });
+  fetch('https://ntfy.sh/sui-' + SYN, { method: 'POST', body: m }).then(r => { if (r.ok) { if (!synLast) toast('📱 Conectado con Sui Game'); synLast = m } }).catch(() => { });
 }
 setInterval(syn, 4000); syn();
 
@@ -700,7 +700,7 @@ setInterval(syn, 4000); syn();
   function state() {
     const e = $('qrState'), on = !!SYN;
     e.className = 'qrst' + (on ? ' ok' : '');
-    e.innerHTML = on ? '✅ Vinculado (código <b>' + esc(SYN.slice(0, 4)) + '…' + esc(SYN.slice(-2)) + '</b>)<br><small>Enviando: nivel ' + S.lv + ' · ' + S.sp + ' punto(s) extra · ' + Object.keys(SK).length + ' habilidades</small>' : '⚪ Sin vincular. Escanea el QR del juego del PC.';
+    e.innerHTML = on ? '✅ Vinculado (código <b>' + esc(SYN.slice(0, 4)) + '…' + esc(SYN.slice(-2)) + '</b>)<br><small>Enviando: nivel ' + S.lv + ' · ' + S.sp + ' punto(s) extra · ' + Object.keys(SK).length + ' habilidades</small>' : '⚪ Sin vincular. Escanea el QR del juego: Sui Game.';
     $('qrUnlink').style.display = on ? '' : 'none';
   }
   function link(c) {
@@ -764,7 +764,7 @@ setInterval(syn, 4000); syn();
     im.onerror = () => toast('No pude leer esa imagen'); im.src = u;
   };
   $('qrUnlink').onclick = () => {
-    if (!confirm('¿Desvincular del juego del PC?')) return;
+    if (!confirm('¿Desvincular de Sui Game?')) return;
     try { localStorage.removeItem('sui_sync') } catch (e) { }
     SYN = ''; synLast = ''; state(); toast('Desvinculado');
   };
