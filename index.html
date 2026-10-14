@@ -368,7 +368,7 @@
         <h1><span id="nm">Aventurero</span> <span class="lv">Nv. <span id="lv">1</span></span></h1>
         <small id="ttl">Campesino</small>
         <div class="bar"><i id="xb"></i></div>
-        <small><span id="xt"></span> · 🏆 Racha: <span id="st">0</span> días</small>
+        <small><span id="xt"></span></small>
       </div>
     </div>
 
@@ -409,10 +409,9 @@
         <div class="note">Toca el mapa para marcar el destino 📌 y pulsa ✕ para quitarlo. 🎯 vuelve a seguirte.</div>
       </div>
       <div class="card">
-        <h2>Misiones de hoy <span class="lv" id="cnt"></span></h2>
+        <h2>Misiones de hoy <span id="lim" class="cz" style="font-size:14px;font-weight:700;color:#6b4a2a;margin-left:4px">0/8</span><span class="lv" id="cnt"></span></h2>
         <div id="list"></div>
-        <div class="row"><button class="btn g" id="newday" style="flex:1">🌅 Nuevo día</button><button class="btn"
-            id="delq" style="flex:1">🗑️ Borrar lista</button></div>
+        <div class="row"><button class="btn" id="delq" style="flex:1">🗑️ Borrar lista</button></div>
       </div>
     </section>
 
@@ -505,10 +504,19 @@
     const CLS = { caballero: ['🛡️', 'Caballero', ['trabajo', 'ejercicio']], erudito: ['📜', 'Erudito', ['estudio']], artesano: ['🔨', 'Artesano', ['hogar']], explorador: ['🧭', 'Explorador', ['lugar', 'social']] };
     const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
     const $ = id => document.getElementById(id);
-    const def = () => ({ name: 'Aventurero', xp: 0, lv: 1, sp: 0, streak: 0, lastDay: '', skills: Object.fromEntries(Object.keys(SK).map(k => [k, { lv: 0, pts: 0 }])), q: [], places: [], sug: SUG.map(x => [...x]), cls: '', photo: '', made: { day: '', n: 0 } });
+    const def = () => ({ name: 'Aventurero', xp: 0, lv: 1, sp: 0, skills: Object.fromEntries(Object.keys(SK).map(k => [k, { lv: 0, pts: 0 }])), q: [], places: [], sug: SUG.map(x => [...x]), cls: '', photo: '', made: { t: 0, n: 0 } });
     let S = def(), pos = null, watch = null;
     try { const r = localStorage.getItem('cronicas'); if (r) S = Object.assign(def(), JSON.parse(r)) } catch (e) { }
     const save = () => { try { localStorage.setItem('cronicas', JSON.stringify(S)) } catch (e) { } };
+    // Reinicio automático: 24 h reales después de crear la primera misión del ciclo
+    const DAY_MS = 864e5;
+    if (!S.made || S.made.t == null) S.made = { t: 0, n: 0 };
+    function checkReset() {
+      if (S.made.t && Date.now() - S.made.t >= DAY_MS) {
+        S.q = S.q.filter(q => !q.done); S.made = { t: 0, n: 0 }; save(); toast('¡Un nuevo día comienza!'); return true
+      }
+      return false
+    }
     const need = l => 100 + (l - 1) * 50;
     const RANGES = { f: [5, 15], m: [15, 40], d: [30, 80] };
     function parseDest(s) { s = s.trim(); const m = s.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || s.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || s.match(/[?&](?:q|ll|query|destination|center)=(-?\d+\.?\d*)(?:,|%2C)(-?\d+\.?\d*)/) || s.match(/(-?\d+\.\d+)\s*[,; ]\s*(-?\d+\.\d+)/); if (!m) return null; const a = +m[1], b = +m[2]; return Math.abs(a) <= 90 && Math.abs(b) <= 180 ? { lat: a, lng: b } : null }
@@ -532,23 +540,22 @@
     function complete(id) {
       const q = S.q.find(x => x.id === id); if (!q || q.done) return;
       q.done = true;
-      const today = new Date().toDateString();
-      if (S.lastDay !== today) { const y = new Date(Date.now() - 864e5).toDateString(); S.streak = S.lastDay === y ? S.streak + 1 : 1; S.lastDay = today }
-      const R = RANGES[q.d || 'm']; let xp = R[0] + Math.floor(Math.random() * (R[1] - R[0] + 1)); const crit = Math.random() < 0.1; if (crit) xp *= 2; const cl = CLS[S.cls], bon = cl && cl[2].includes(q.cat); if (bon) xp = Math.round(xp * 1.25); q.xp = xp;
+            const R = RANGES[q.d || 'm']; let xp = R[0] + Math.floor(Math.random() * (R[1] - R[0] + 1)); const crit = Math.random() < 0.1; if (crit) xp *= 2; const cl = CLS[S.cls], bon = cl && cl[2].includes(q.cat); if (bon) xp = Math.round(xp * 1.25); q.xp = xp;
       addXP(xp, CATS[q.cat].sk);
       toast((crit ? '💥 ¡Golpe crítico! ' : '¡Misión cumplida! ') + '+' + xp + ' XP' + (bon ? ' (clase +25%)' : '') + ' · ' + SK[CATS[q.cat].sk][1] + ' +1');
       save(); render();
     }
 
     function render() {
-      $('nm').textContent = S.name; $('lv').textContent = S.lv; $('st').textContent = S.streak;
+      checkReset();
+      $('nm').textContent = S.name; $('lv').textContent = S.lv;
       $('ttl').textContent = TITLES[Math.min(Math.floor((S.lv - 1) / 3), 9)] + (S.cls ? ' · ' + CLS[S.cls][1] : '');
       const cr = $('crest'); if (S.photo) { cr.style.backgroundImage = 'url(' + S.photo + ')'; cr.style.backgroundSize = 'cover'; cr.textContent = '' } else { cr.style.backgroundImage = ''; cr.textContent = S.cls ? CLS[S.cls][0] : '⚔️' }
       $('xb').style.width = (S.xp / need(S.lv) * 100) + '%';
       $('xt').textContent = S.xp + ' / ' + need(S.lv) + ' XP';
       $('sp').textContent = S.sp;
       const L = $('list'); L.innerHTML = '';
-      const done = S.q.filter(q => q.done).length; const td = new Date().toDateString(), mn = S.made.day === td ? S.made.n : 0; $('cnt').textContent = done + '/' + S.q.length + ' · hoy ' + mn + '/8';
+      const done = S.q.filter(q => q.done).length; $('lim').textContent = S.made.n + '/8'; $('cnt').textContent = done + '/' + S.q.length;
       if (!S.q.length) L.innerHTML = '<div class="empty">Sin misiones. ¡Escribe tu primera hazaña arriba!</div>';
       S.q.forEach(q => {
         const d = document.createElement('div'); d.className = 'q' + (q.done ? ' done' : '');
@@ -608,7 +615,7 @@
     $('setloc').onclick = () => { if (!pos) { toast('Activa el GPS en Ajustes primero'); return } setPin(pos.lat, pos.lng) };
     $('add').onclick = () => {
       const t = $('mt').value.trim(), cat = $('mc').value; if (!t) { toast('Escribe la misión primero'); return }
-      const td = new Date().toDateString(); if (S.made.day !== td) S.made = { day: td, n: 0 };
+      checkReset();
       if (S.made.n >= 8) { toast('Límite alcanzado: 8 misiones por día'); return }
       const q = { id: Date.now(), t, cat, d: (() => { const r = Math.random(); return r < .4 ? 'f' : r < .8 ? 'm' : 'd' })(), done: false };
       if (cat === 'lugar') {
@@ -618,9 +625,8 @@
         if (!p) { toast('Toca el mapa, busca un lugar o elige uno guardado'); return }
         q.lat = p.lat; q.lng = p.lng; q.r = RADIO; q.place = p.name; clearPin(); $('saved').value = '';
       }
-      S.made.n++; S.q.push(q); $('mt').value = ''; save(); render(); toast('Misión aceptada · rango ' + ({ f: 'Común', m: 'Rara', d: 'Épica' })[q.d]);
+      if (!S.made.t) S.made.t = Date.now(); S.made.n++; S.q.push(q); $('mt').value = ''; save(); render(); toast('Misión aceptada · rango ' + ({ f: 'Común', m: 'Rara', d: 'Épica' })[q.d]);
     };
-    $('newday').onclick = () => { S.q = S.q.filter(q => !q.done); S.made = { day: '', n: 0 }; save(); render(); toast('¡Un nuevo día comienza!') };
     $('savename').onclick = () => { const n = $('nameIn').value.trim(); if (n) { S.name = n; save(); render(); toast('Nombre actualizado') } };
     $('reset').onclick = () => { if (confirm('¿Borrar toda tu aventura?')) { S = def(); save(); render() } };
 
@@ -663,6 +669,8 @@
     $('dest').oninput = () => { const v = $('dest').value.trim(); if (/goo\.gl|maps\.app/.test(v)) { toast('Enlace corto no legible: abre el enlace y copia la URL larga, o busca el lugar arriba'); return } const c = parseDest(v); if (c) { showPin(c.lat, c.lng); follow = false; if (mapOK) map.setView([c.lat, c.lng], 17) } };
     $('gpsbtn').onclick = startGPS; startGPS();
     render();
+    setInterval(() => { if (checkReset()) render() }, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && checkReset()) render() });
 
 var SYN = '', synLast = '', synWarn = 0;
 try { const c = new URLSearchParams(location.search).get('sync'); if (c && /^[a-z0-9]{6,40}$/i.test(c)) localStorage.setItem('sui_sync', c); SYN = localStorage.getItem('sui_sync') || '' } catch (e) { }
